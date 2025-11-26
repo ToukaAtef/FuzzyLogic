@@ -56,30 +56,30 @@ public class StartRuleBased {
 
     }
 
-//    public Map<FuzzyRule, Double> getResultFromRules(){
-//        Map<FuzzyRule, Double> fuzzyRuleOutput = new HashMap<>();
-//        for(FuzzyRule rule : ruleBase.getRules()){
-//            double res=rule.applyRule(fuzzifiedInputs); fuzzyRuleOutput.put(rule,res);
-//        } return fuzzyRuleOutput;
-//    }
-
     public Map<String, Double> getResultFromRules(){
-        Map<String, Double> aggregatedOutput = new HashMap<>();
-
+        Map<String, Double> fuzzyRuleOutput = new HashMap<>();
         for(FuzzyRule rule : ruleBase.getRules()){
-            double firingStrength = rule.applyRule(fuzzifiedInputs);
-
-            double impliedDegree = Math.min(firingStrength, 1.0);
-
-            String setName = rule.getConsequentSet();
-
-
-            double current = aggregatedOutput.getOrDefault(setName, 0.0);
-            aggregatedOutput.put(setName, Math.max(current, impliedDegree));
-        }
-
-        return aggregatedOutput;
+            double res=rule.applyRule(fuzzifiedInputs); fuzzyRuleOutput.put(rule.consequentSet,res);
+        } return fuzzyRuleOutput;
     }
 
+//    public Map<String, Double> getResultFromRules(){
+//        Map<String, Double> aggregatedOutput = new HashMap<>();
+//
+//        for(FuzzyRule rule : ruleBase.getRules()){
+//            double firingStrength = rule.applyRule(fuzzifiedInputs);
+//
+//            double impliedDegree = Math.min(firingStrength, 1.0);
+//
+//            String setName = rule.getConsequentSet();
+//
+//
+//            double current = aggregatedOutput.getOrDefault(setName, 0.0);
+//            aggregatedOutput.put(setName, Math.max(current, impliedDegree));
+//        }
+//
+//        return aggregatedOutput;
+//    }
+//
 
 }

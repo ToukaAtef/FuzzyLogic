@@ -33,13 +33,7 @@ public class RuleBuilder {
 
     public void then(String var, String set){
         FuzzyRule rule;
-
-        if(selectedOp){
-             rule = new FuzzyRule(new HashMap<>(antecedents), var, set, AndRulesOp.MIN,null);
-        }
-        else{
-             rule = new FuzzyRule(new HashMap<>(antecedents), var, set, null,OrRulesOp.MAX);
-        }
+        rule = new FuzzyRule(new HashMap<>(antecedents), var, set, selectedOp);
 
         base.addRule(rule);
         antecedents.clear();
