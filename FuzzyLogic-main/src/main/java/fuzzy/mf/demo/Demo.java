@@ -42,7 +42,7 @@ public class Demo {
 
         System.out.println("\n=== Fuzzification Results ===");
 
-        // Declare fuzzifiedInputs outside try block
+        
         Map<String, Map<String, Double>> fuzzifiedInputs = new HashMap<>();
 
         try {
@@ -60,6 +60,8 @@ public class Demo {
         }
 
         System.out.println("\n=== RuleBased Results ===");
+
+        RuleBase ruleBase = null;
         try {
             Map<String, Double> experienceFuzz = Experience.fuzzify(ExperienceInput);
             Map<String, Double> skillsFuzz   = SkillsScore.fuzzify(SkillsScoreInput);
@@ -71,6 +73,7 @@ public class Demo {
            // start rule
             StartRuleBased startRuleBased=new StartRuleBased(fuzzifiedInputs);
             startRuleBased.makeRules();
+            ruleBase = startRuleBased.ruleBase;
             Map<String, Double> fuzzyRuleOutput= startRuleBased.getResultFromRules();
             for(Map.Entry<String, Double> entry : fuzzyRuleOutput.entrySet()) {
                 System.out.println(entry.getKey() + " -> " + entry.getValue());
@@ -88,60 +91,47 @@ public class Demo {
         System.out.println("\n=== Defuzzification Results ===");
 
         try {
-            // Prepare inputs for engines
+            
             Map<String, Double> crispInputs = new HashMap<>();
             crispInputs.put("Experience", ExperienceInput);
             crispInputs.put("SkillsScore", SkillsScoreInput);
             crispInputs.put("Adaptability", AdaptabilityInput);
 
-            // Create rule base using StartRuleBased
-            StartRuleBased startRuleBased = new StartRuleBased(fuzzifiedInputs);
-            startRuleBased.makeRules();
-            RuleBase ruleBase = startRuleBased.ruleBase;
+          MamdaniEngine mamdaniEngine = new MamdaniEngine();
+            Map<Double, Double> mamdaniOutput = mamdaniEngine.inference(ruleBase, fuzzifiedInputs, SuitabilityScore); 
 
-            // ========== MAMDANI + CENTROID ==========
-            System.out.println("\n--- Method 1: Mamdani + Centroid ---");
-            MamdaniEngine mamdaniEngine = new MamdaniEngine();
-            Map<Double, Double> mamdaniOutput = mamdaniEngine.inference(ruleBase, fuzzifiedInputs, SuitabilityScore);
-            
             CentroidDefuzzifier centroid = new CentroidDefuzzifier();
             double centroidResult = centroid.defuzzify(mamdaniOutput);
             System.out.println("Crisp Output (Centroid): " + String.format("%.2f", centroidResult));
 
-            // ========== MAMDANI + MEAN OF MAXIMUM ==========
-            System.out.println("\n--- Method 2: Mamdani + Mean of Maximum ---");
             MeanOfMaximumDefuzzifier mom = new MeanOfMaximumDefuzzifier();
             double momResult = mom.defuzzify(mamdaniOutput);
             System.out.println("Crisp Output (Mean of Maximum): " + String.format("%.2f", momResult));
 
-            // ========== SUGENO + WEIGHTED AVERAGE ==========
-            System.out.println("\n--- Method 3: Sugeno + Weighted Average ---");
+
             SugenoEngine sugenoEngine = new SugenoEngine();
-            
-            // Set consequent functions for each rule
-            for (FuzzyRule rule : ruleBase.getRules()) {
+
+            for (FuzzyRule rule : ruleBase.getRules()) { 
                 String consequentSet = rule.getConsequentSet();
                 double constantValue;
-                
+
                 if (consequentSet.equals("Highly Suitable")) {
                     constantValue = 85.0;
                 } else if (consequentSet.equals("Moderate")) {
                     constantValue = 50.0;
-                } else { // Unsuitable
+                } else {
                     constantValue = 20.0;
                 }
-                
+
                 sugenoEngine.setConsequent(rule, new SugenoEngine.ConstantConsequent(constantValue));
             }
-            
+
             sugenoEngine.setCrispInputs(crispInputs);
             Map<Double, Double> sugenoOutput = sugenoEngine.inference(ruleBase, fuzzifiedInputs, SuitabilityScore);
-            
             SugenoWeightedAverageDefuzzifier sugenoDefuzz = new SugenoWeightedAverageDefuzzifier();
             double sugenoResult = sugenoDefuzz.defuzzify(sugenoOutput);
             System.out.println("Crisp Output (Sugeno Weighted Average): " + String.format("%.2f", sugenoResult));
 
-            // ========== COMPARISON ==========
             System.out.println("\n=== Comparison of Defuzzification Methods ===");
             System.out.println("Centroid:              " + String.format("%.2f", centroidResult));
             System.out.println("Mean of Maximum:       " + String.format("%.2f", momResult));
