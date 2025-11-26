@@ -1,8 +1,12 @@
 package fuzzy.mf.demo;
 import fuzzy.mf.*;
 import fuzzy.mf.Linguistic_Variable.LinguisticVariable;
-import fuzzy.mf.rules.FuzzyRule;
 import fuzzy.mf.rules.StartRuleBased;
+import fuzzy.mf.engines.MamdaniEngine;
+import fuzzy.mf.engines.SugenoEngine;
+import fuzzy.mf.rules.RuleBase;
+import fuzzy.mf.rules.FuzzyRule;
+import fuzzy.mf.defuzzifiers.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,6 +42,9 @@ public class Demo {
 
         System.out.println("\n=== Fuzzification Results ===");
 
+        // Declare fuzzifiedInputs outside try block
+        Map<String, Map<String, Double>> fuzzifiedInputs = new HashMap<>();
+
         try {
             System.out.println("\nExperience:");
             Experience.fuzzify(ExperienceInput).forEach((k, v) -> System.out.println(k + " -> " + v));
@@ -57,7 +64,6 @@ public class Demo {
             Map<String, Double> experienceFuzz = Experience.fuzzify(ExperienceInput);
             Map<String, Double> skillsFuzz   = SkillsScore.fuzzify(SkillsScoreInput);
             Map<String, Double> adaptabilityFuzz = Adaptability.fuzzify(AdaptabilityInput);
-            Map<String, Map<String, Double>> fuzzifiedInputs = new HashMap<>();
             fuzzifiedInputs.put("Experience", experienceFuzz);
             fuzzifiedInputs.put("SkillsScore", skillsFuzz);
             fuzzifiedInputs.put("Adaptability", adaptabilityFuzz);
@@ -70,15 +76,80 @@ public class Demo {
                 System.out.println(entry.getKey() + " -> " + entry.getValue());
             }
 
-
         }
         catch (Exception e) {
             System.err.println("\nRuleBased Failed: " + e.getMessage());
-
         }
 
+        // ============================================
+        // DEFUZZIFICATION SECTION
+        // ============================================
+        
+        System.out.println("\n=== Defuzzification Results ===");
 
+        try {
+            // Prepare inputs for engines
+            Map<String, Double> crispInputs = new HashMap<>();
+            crispInputs.put("Experience", ExperienceInput);
+            crispInputs.put("SkillsScore", SkillsScoreInput);
+            crispInputs.put("Adaptability", AdaptabilityInput);
 
+            // Create rule base using StartRuleBased
+            StartRuleBased startRuleBased = new StartRuleBased(fuzzifiedInputs);
+            startRuleBased.makeRules();
+            RuleBase ruleBase = startRuleBased.ruleBase;
 
+            // ========== MAMDANI + CENTROID ==========
+            System.out.println("\n--- Method 1: Mamdani + Centroid ---");
+            MamdaniEngine mamdaniEngine = new MamdaniEngine();
+            Map<Double, Double> mamdaniOutput = mamdaniEngine.inference(ruleBase, fuzzifiedInputs, SuitabilityScore);
+            
+            CentroidDefuzzifier centroid = new CentroidDefuzzifier();
+            double centroidResult = centroid.defuzzify(mamdaniOutput);
+            System.out.println("Crisp Output (Centroid): " + String.format("%.2f", centroidResult));
+
+            // ========== MAMDANI + MEAN OF MAXIMUM ==========
+            System.out.println("\n--- Method 2: Mamdani + Mean of Maximum ---");
+            MeanOfMaximumDefuzzifier mom = new MeanOfMaximumDefuzzifier();
+            double momResult = mom.defuzzify(mamdaniOutput);
+            System.out.println("Crisp Output (Mean of Maximum): " + String.format("%.2f", momResult));
+
+            // ========== SUGENO + WEIGHTED AVERAGE ==========
+            System.out.println("\n--- Method 3: Sugeno + Weighted Average ---");
+            SugenoEngine sugenoEngine = new SugenoEngine();
+            
+            // Set consequent functions for each rule
+            for (FuzzyRule rule : ruleBase.getRules()) {
+                String consequentSet = rule.getConsequentSet();
+                double constantValue;
+                
+                if (consequentSet.equals("Highly Suitable")) {
+                    constantValue = 85.0;
+                } else if (consequentSet.equals("Moderate")) {
+                    constantValue = 50.0;
+                } else { // Unsuitable
+                    constantValue = 20.0;
+                }
+                
+                sugenoEngine.setConsequent(rule, new SugenoEngine.ConstantConsequent(constantValue));
+            }
+            
+            sugenoEngine.setCrispInputs(crispInputs);
+            Map<Double, Double> sugenoOutput = sugenoEngine.inference(ruleBase, fuzzifiedInputs, SuitabilityScore);
+            
+            SugenoWeightedAverageDefuzzifier sugenoDefuzz = new SugenoWeightedAverageDefuzzifier();
+            double sugenoResult = sugenoDefuzz.defuzzify(sugenoOutput);
+            System.out.println("Crisp Output (Sugeno Weighted Average): " + String.format("%.2f", sugenoResult));
+
+            // ========== COMPARISON ==========
+            System.out.println("\n=== Comparison of Defuzzification Methods ===");
+            System.out.println("Centroid:              " + String.format("%.2f", centroidResult));
+            System.out.println("Mean of Maximum:       " + String.format("%.2f", momResult));
+            System.out.println("Sugeno Weighted Avg:   " + String.format("%.2f", sugenoResult));
+
+        } catch (Exception e) {
+            System.err.println("\nDefuzzification Failed: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

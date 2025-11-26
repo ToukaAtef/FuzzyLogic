@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class StartRuleBased {
     Map<String, Map<String, Double>> fuzzifiedInputs;
-    RuleBase ruleBase = new RuleBase();
+    public RuleBase ruleBase = new RuleBase();
 
     public StartRuleBased(Map<String, Map<String, Double>> fuzzifiedInputs) {
         this.fuzzifiedInputs = fuzzifiedInputs;
@@ -80,7 +80,6 @@ public class StartRuleBased {
 
         return aggregatedOutput;
     }
-
 
 
 }
